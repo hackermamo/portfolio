@@ -146,7 +146,7 @@ END $$;
 INSERT INTO users (email, password, name, role)
 VALUES (
 	'maman.cse.tcea.2026@gmail.com',
-	'$2b$10$dUWqQ0ks0E7ybQ4GPJOR5.SNjimxQry0Yc.LmEaFs7OxVM5dIipw6',
+	'$2b$10$Y.LT0g06AbWnGGCsOh6h/Oj.sj9Lcx812ByLRdBCc7EMJG/9WItEO',
 	'Maman Das',
 	'admin'
 ) ON CONFLICT (email) DO NOTHING;
@@ -158,12 +158,15 @@ VALUES (
 	'Maman Das',
 	'Computer Science Graduate • M.Tech (Pursuing)',
 	'Full-stack developer with experience in Generative AI, Machine Learning, and real-world web applications. I build scalable solutions that solve real problems.',
-	'/images/profile.jpg',
-	'#',
+	'',
+	'',
 	'[{"icon": "Code", "text": "Full-Stack Developer"}, {"icon": "Brain", "text": "GenAI / ML Enthusiast"}, {"icon": "Zap", "text": "Problem Solver"}]'::jsonb,
 	'Build, Learn, Improve, Repeat',
 	true
 );
+
+-- Clear dummy images from existing rows (run if you already seeded before)
+UPDATE hero_content SET profile_photo = '', cv_url = '' WHERE profile_photo = '/images/profile.jpg';
 
 -- Skill Categories & Skills
 INSERT INTO skill_categories (id, name, "order", is_published)

@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
+import { v2 as cloudinary } from "cloudinary";
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 export async function POST(req) {
   try {
@@ -17,16 +22,15 @@ export async function POST(req) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    // Check file size (e.g., 5MB limit)
-    const MAX_SIZE = 5 * 1024 * 1024;
+    // 10MB limit
+    const MAX_SIZE = 10 * 1024 * 1024;
     if (file.size > MAX_SIZE) {
       return NextResponse.json(
-        { error: "File size exceeds 5MB limit" },
+        { error: "File size exceeds 10MB limit" },
         { status: 400 }
       );
     }
 
-    // Supported mime types
     const allowedMimeTypes = [
       "image/jpeg",
       "image/png",
@@ -46,43 +50,42 @@ export async function POST(req) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Determine extension
-    let extension = path.extname(file.name || "").toLowerCase();
-    if (!extension) {
-      if (file.type === "image/jpeg") extension = ".jpg";
-      else if (file.type === "image/png") extension = ".png";
-      else if (file.type === "image/webp") extension = ".webp";
-      else if (file.type === "image/gif") extension = ".gif";
-      else if (file.type === "application/pdf") extension = ".pdf";
-      else extension = ".bin";
-    }
+    // Determine Cloudinary resource type
+    const isPdf = file.type === "application/pdf";
+    const resourceType = isPdf ? "raw" : "image";
 
-    // Clean filename
-    const safeBaseName = (file.name ? path.parse(file.name).name : "upload")
-      .replace(/[^a-zA-Z0-9_-]/g, "_")
-      .slice(0, 30);
-    const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
-    const finalFileName = `${safeBaseName}-${uniqueSuffix}${extension}`;
-
-    const uploadsDir = path.join(process.cwd(), "public", "uploads");
-    await mkdir(uploadsDir, { recursive: true });
-
-    const filePath = path.join(uploadsDir, finalFileName);
-    await writeFile(filePath, buffer);
-
-    const publicUrl = `/uploads/${finalFileName}`;
+    // Upload to Cloudinary via stream
+    const uploadResult = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: "portfolio",
+          resource_type: resourceType,
+          // For images: auto-optimize
+          ...(resourceType === "image" && {
+            quality: "auto",
+            fetch_format: "auto",
+          }),
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      );
+      uploadStream.end(buffer);
+    });
 
     return NextResponse.json({
       success: true,
-      url: publicUrl,
-      fileName: finalFileName,
+      url: uploadResult.secure_url,
+      publicId: uploadResult.public_id,
+      fileName: file.name,
       size: file.size,
       type: file.type,
     });
   } catch (error) {
-    console.error("Upload handler error:", error);
+    console.error("Cloudinary upload error:", error);
     return NextResponse.json(
-      { error: "Internal server error during upload" },
+      { error: "Failed to upload file. Check Cloudinary configuration." },
       { status: 500 }
     );
   }
