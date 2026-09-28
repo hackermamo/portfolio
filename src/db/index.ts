@@ -15,14 +15,20 @@ if (!databaseUrl) {
   throw new Error("DATABASE_URL environment variable is required");
 }
 
+const requiresSsl =
+  isProduction ||
+  databaseUrl.includes("supabase.co") ||
+  databaseUrl.includes("neon.tech") ||
+  databaseUrl.includes("sslmode=require");
+
 export const pool: Pool =
   globalForDb.__portfolioDbPool ??
   new Pool({
     connectionString: databaseUrl,
-    ssl: isProduction ? { rejectUnauthorized: false } : false,
+    ssl: requiresSsl ? { rejectUnauthorized: false } : false,
     max: isProduction ? 3 : 10,
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 5000,
+    connectionTimeoutMillis: 10000,
   });
 
 if (!isProduction) {

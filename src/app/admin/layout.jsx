@@ -49,6 +49,11 @@ export default function AdminLayout({ children }) {
   const { isDark, toggleTheme } = useTheme();
 
   useEffect(() => {
+    if (pathname === '/admin/login') {
+      setLoading(false);
+      return;
+    }
+
     const checkAuth = async () => {
       try {
         const res = await axios.get('/api/auth/me');

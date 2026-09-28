@@ -9,8 +9,17 @@ require('dotenv').config();
 // Let's just use raw SQL for seeding to avoid TS/JS interop issues in a simple script.
 
 async function seed() {
+  const requiresSsl =
+    process.env.NODE_ENV === 'production' ||
+    (process.env.DATABASE_URL && (
+      process.env.DATABASE_URL.includes('supabase.co') ||
+      process.env.DATABASE_URL.includes('neon.tech') ||
+      process.env.DATABASE_URL.includes('sslmode=require')
+    ));
+
   const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
+    ssl: requiresSsl ? { rejectUnauthorized: false } : false,
   });
   const db = drizzle(pool);
 
